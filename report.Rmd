@@ -1,0 +1,25 @@
+---
+title: "Kaggle House Prices – Data Preprocessing"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    theme: flatly
+---
+
+#### preprocessing
+
+##### Column name legalization 
+remove "Id" column, and "X" to column names which start with digital.
+
+##### Handle Missing Value
+
+These columns have missing value rate > 10%:
+PoolQC, MiscFeature, Alley, Fence, FireplaceQu, LotFrontage, Neighborhood
+
+column PoolQC, Alley, Fence have special meaning, so we fill with string("NA")
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE)
