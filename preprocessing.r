@@ -1,28 +1,136 @@
 convert_types <- function(data) {
-    result <- data
-
-    # 字符转因子
-    for (col in names(result)) {
-        if (is.character(result[[col]])) {
-            result[[col]] <- as.factor(result[[col]])
-        }
-        # 逻辑转数值
-        if (is.logical(result[[col]])) {
-            result[[col]] <- as.numeric(result[[col]])
-        }
+  ## 0. 先保留一份原表，防止误伤
+  result <- data
+  
+  ## 1. 建立“字典”：每个变量该是什么类型/水平
+  type_dict <- list(
+    #----- 有序因子（等级、质量、优良中差） -----
+    OverallQual = ordered(c(1:10)),
+    OverallCond = ordered(c(1:10)),
+    ExterQual   = ordered(c("Po","Fa","TA","Gd","Ex")),
+    ExterCond   = ordered(c("Po","Fa","TA","Gd","Ex")),
+    BsmtQual    = ordered(c("Po","Fa","TA","Gd","Ex")),
+    BsmtCond    = ordered(c("Po","Fa","TA","Gd","Ex")),
+    BsmtExposure= ordered(c("No","Mn","Av","Gd")),
+    BsmtFinType1= ordered(c("Unf","LwQ","Rec","BLQ","ALQ","GLQ")),
+    BsmtFinType2= ordered(c("Unf","LwQ","Rec","BLQ","ALQ","GLQ")),
+    HeatingQC   = ordered(c("Po","Fa","TA","Gd","Ex")),
+    KitchenQual = ordered(c("Po","Fa","TA","Gd","Ex")),
+    FireplaceQu = ordered(c("Po","Fa","TA","Gd","Ex")),
+    GarageQual  = ordered(c("Po","Fa","TA","Gd","Ex")),
+    GarageCond  = ordered(c("Po","Fa","TA","Gd","Ex")),
+    PoolQC      = ordered(c("Fa","TA","Gd","Ex")),
+    Fence       = ordered(c("MnWw","GdWo","MnPrv","GdPrv")),
+    LandSlope   = ordered(c("Gtl","Mod","Sev")),
+    LotShape    = ordered(c("IR3","IR2","IR1","Reg")),
+    Functional  = ordered(c("Sal","Sev","Maj2","Maj1","Mod","Min2","Min1","Typ")),
+    
+    #----- 普通因子 -----
+    MSSubClass  = factor(levels = c(20,30,40,45,50,60,70,75,80,85,90,120,150,160,180,190)),
+    MSZoning    = factor(c("A","C","FV","I","RH","RL","RP","RM")),
+    Street      = factor(c("Grvl","Pave")),
+    Alley       = factor(c("Grvl","Pave","NA")),
+    LotConfig   = factor(c("Inside","Corner","CulDSac","FR2","FR3")),
+    LandContour = factor(c("Lvl","Bnk","HLS","Low")),
+    Utilities   = factor(c("AllPub","NoSewr","NoSeWa","ELO")),
+    Neighborhood= factor(c("Blmngtn","Blueste","BrDale","BrkSide","ClearCr","CollgCr",
+                            "Crawfor","Edwards","Gilbert","IDOTRR","MeadowV","Mitchel",
+                            "Names","NoRidge","NPkVill","NridgHt","NWAmes","OldTown",
+                            "SWISU","Sawyer","SawyerW","Somerst","StoneBr","Timber","Veenker")),
+    Condition1  = factor(c("Artery","Feedr","Norm","RRNn","RRAn","PosN","PosA","RRNe","RRAe")),
+    Condition2  = factor(c("Artery","Feedr","Norm","RRNn","RRAn","PosN","PosA","RRNe","RRAe")),
+    BldgType    = factor(c("1Fam","2FmCon","Duplx","TwnhsE","TwnhsI")),
+    HouseStyle  = factor(c("1Story","1.5Fin","1.5Unf","2Story","2.5Fin","2.5Unf","SFoyer","SLvl")),
+    RoofStyle   = factor(c("Flat","Gable","Gambrel","Hip","Mansard","Shed")),
+    RoofMatl    = factor(c("ClyTile","CompShg","Membran","Metal","Roll","Tar&Grv","WdShake","WdShngl")),
+    Exterior1st = factor(c("AsbShng","AsphShn","BrkComm","BrkFace","CBlock","CemntBd","HdBoard",
+                            "ImStucc","MetalSd","Other","Plywood","PreCast","Stone","Stucco",
+                            "VinylSd","Wd Sdng","WdShing")),
+    Exterior2nd = factor(c("AsbShng","AsphShn","BrkComm","BrkFace","CBlock","CemntBd","HdBoard",
+                            "ImStucc","MetalSd","Other","Plywood","PreCast","Stone","Stucco",
+                            "VinylSd","Wd Sdng","WdShing")),
+    MasVnrType  = factor(c("BrkCmn","BrkFace","CBlock","None","Stone")),
+    Foundation  = factor(c("BrkTil","CBlock","PConc","Slab","Stone","Wood")),
+    Heating     = factor(c("Floor","GasA","GasW","Grav","OthW","Wall")),
+    Electrical  = factor(c("SBrkr","FuseA","FuseF","FuseP","Mix")),
+    GarageType  = factor(c("2Types","Attchd","Basment","BuiltIn","CarPort","Detchd","NA")),
+    GarageFinish= factor(c("Fin","RFn","Unf","NA")),
+    PavedDrive  = factor(c("Y","P","N")),
+    SaleType    = factor(c("WD","CWD","VWD","New","COD","Con","ConLw","ConLI","ConLD","Oth")),
+    SaleCondition=factor(c("Normal","Abnorml","AdjLand","Alloca","Family","Partial")),
+    CentralAir  = factor(c("N","Y")),   # 后面再转 logical
+    
+    #----- 逻辑变量 -----
+    # CentralAir  单独处理
+    
+    #----- 显式日期/时间 -----
+    YearBuilt      = integer(),
+    YearRemodAdd   = integer(),
+    YrSold         = integer(),
+    MoSold         = integer(),
+    
+    #----- 纯数值（面积、长度、个数、价格） -----
+    LotFrontage = numeric(),
+    LotArea     = numeric(),
+    MasVnrArea  = numeric(),
+    BsmtFinSF1  = numeric(),
+    BsmtFinSF2  = numeric(),
+    BsmtUnfSF   = numeric(),
+    TotalBsmtSF = numeric(),
+    X1stFlrSF    = numeric(),
+    X2ndFlrSF    = numeric(),
+    LowQualFinSF= numeric(),
+    GrLivArea   = numeric(),
+    BsmtFullBath= integer(),
+    BsmtHalfBath= integer(),
+    FullBath    = integer(),
+    HalfBath    = integer(),
+    Bedroom     = integer(),
+    Kitchen     = integer(),
+    TotRmsAbvGrd= integer(),
+    Fireplaces  = integer(),
+    GarageCars  = integer(),
+    GarageArea  = numeric(),
+    WoodDeckSF  = numeric(),
+    OpenPorchSF = numeric(),
+    EnclosedPorch=numeric(),
+    X3SsnPorch   = numeric(),
+    ScreenPorch = numeric(),
+    PoolArea    = numeric(),
+    MiscVal     = numeric()
+  )
+  
+  ## 2. 按字典批量转换
+  for (col in names(result)) {
+    if (!col %in% names(type_dict)) next   # 字典里没有就跳过
+    
+    spec <- type_dict[[col]]
+    
+    if (is.ordered(spec)) {                       # 有序因子
+      result[[col]] <- ordered(result[[col]], levels = levels(spec))
+    } else if (is.factor(spec)) {                 # 普通因子
+      result[[col]] <- factor(result[[col]], levels = levels(spec))
+    } else if (col == "CentralAir") {             # Y/N → logical
+      result[[col]] <- result[[col]] == "Y"
+    } else if (identical(spec, integer())) {      # 整型
+      result[[col]] <- as.integer(result[[col]])
+    } else if (identical(spec, numeric())) {      # 双精度
+      result[[col]] <- as.numeric(result[[col]])
     }
-
-    # 移除ID列
-    if ("Id" %in% names(result)) {
-        result <- result[, names(result) != "Id", drop = FALSE]
-    }
-
-    return(result)
+  }
+  
+  ## 3. 统一把 logical 转 0/1
+  log_cols <- sapply(result, is.logical)
+  result[log_cols] <- lapply(result[log_cols], as.numeric)
+  
+  return(result)
 }
 
 impute_missing <- function(data, ref_data = NULL) {
     result <- data
-
+    # special meaning
+    cols <- c("PoolQC", "Alley", "Fence")
+    result[cols] <- lapply(result[cols], function(x) ifelse(is.na(x), "NA", x))
     for (col in names(result)) {
         if (any(is.na(result[[col]]))) {
             # 数值列：中位数填充
@@ -53,26 +161,11 @@ impute_missing <- function(data, ref_data = NULL) {
 }
 
 preprocess_pipeline <- function(X) {
-    X_train_conv <- convert_types(X)
-    X_train_clean <- impute_missing(X_train_conv)
-    return(X_train_clean)
-}
-
-main_preprocess <- function(x_train, x_val = NULL, x_test = NULL) {
-    # 3. 主处理流程
-    cat("数据预处理开始...\n")
-    # 初始化结果
-    result <- list(x_train = preprocess_pipeline(x_train))
-
-    # 处理验证集（如果有）
-    if (!is.null(x_val)) {
-        result$x_val <- preprocess_pipeline(x_val)
-    }
-
-    # 处理测试集（如果有）
-    if (!is.null(x_test)) {
-        result$X_test <- preprocess_pipeline(x_test)
-    }
-
-    return(result)
+    # 去掉 Id
+    X <- subset(X, select = -Id)
+    # 数字开头 -> 加 X
+    names(X) <- sub("^(\\d)", "X\\1", names(X))
+    X <- convert_types(X)
+    #X <- impute_missing(X)
+    return(X)
 }
