@@ -4,8 +4,6 @@ source("evaluate.r")
 
 train <- read.csv("data/train.csv")
 x_test <- read.csv("data/test.csv")
-# 设置随机种子
-set.seed(123)
 
 x <- subset(train, select = -SalePrice)
 y <- train$SalePrice
@@ -20,4 +18,6 @@ x_val <- x[-train_indices, ]
 y_train <- y[train_indices]
 y_val <- y[-train_indices]
 
-processed <- main_preprocess(x_train, x_val, x_test)
+x_train = preprocess_pipeline(x_train)
+x_test = preprocess_pipeline(x_test)
+x_val = preprocess_pipeline
