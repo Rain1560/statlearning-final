@@ -18,6 +18,6 @@ x_val <- x[-train_indices, ]
 y_train <- y[train_indices]
 y_val <- y[-train_indices]
 
-x_train = preprocess_pipeline(x_train)
-x_test = preprocess_pipeline(x_test)
-x_val = preprocess_pipeline
+x_train <- preprocess_pipeline(x_train)
+x_test <- preprocess_pipeline(x_test)
+x_val <- preprocess_pipeline(x_val)
