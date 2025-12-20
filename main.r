@@ -1,5 +1,8 @@
 source("preprocessing.r")
-source("models.r")
+source("Lasso.R")
+source("Ridge.R")
+source("groupLasso.R")
+source("")
 source("evaluate.r")
 
 train <- read.csv("data/train.csv")
