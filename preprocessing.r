@@ -1,6 +1,12 @@
 convert_types <- function(data) {
   ## 0. 先保留一份原表，防止误伤
-  result <- data
+  # 去掉 Id
+  if ("Id" %in% colnames(data)){
+    result <- subset(data, select = -Id)
+  }
+  # 数字开头 -> 加 X
+  names(result) <- sub("^(\\d)", "X\\1", names(result))
+  result <- result
 
   ## 1. 建立“字典”：每个变量该是什么类型/水平
   type_dict <- list(
@@ -196,15 +202,8 @@ standardize_continuous <- function(data, exclude_cols = NULL) {
 }
 
 preprocess_pipeline <- function(X) {
-  # 去掉 Id
-  if ("Id" %in% colnames(X)){
-    X <- subset(X, select = -Id)
-  }
-  # 数字开头 -> 加 X
-  names(X) <- sub("^(\\d)", "X\\1", names(X))
   X <- convert_types(X)
   X <- impute_missing(X)
-  X <- standardize_continuous(X)
   return(X)
 }
 
