@@ -166,15 +166,45 @@ impute_missing <- function(data, ref_data = NULL) {
   return(result)
 }
 
+#' 标准化连续变量
+#' @param data 数据框
+#' @param exclude_cols 需要排除的列名（如ID、分类变量等）
+#' @return 标准化后的数据框
+standardize_continuous <- function(data, exclude_cols = NULL) {
+  result <- data
+  
+  # 1. 识别连续变量（数值型且不是逻辑变量）
+  continuous_cols <- names(result)[
+    sapply(result, function(x) is.numeric(x) && !is.logical(x))
+  ]
+  
+  # 2. 排除指定列
+  if (!is.null(exclude_cols)) {
+    continuous_cols <- setdiff(continuous_cols, exclude_cols)
+  }
+  
+  # 3. 对每个连续变量进行标准化（z-score标准化）
+  for (col in continuous_cols) {
+    if (length(unique(na.omit(result[[col]]))) > 1) { # 确保有变异度
+      result[[col]] <- scale(result[[col]])
+    } else {
+      warning(paste("Column", col, "has zero variance, skipping standardization"))
+    }
+  }
+  
+  return(result)
+}
+
 preprocess_pipeline <- function(X) {
   # 去掉 Id
-  if ("Id" %in% colnames(df)){
+  if ("Id" %in% colnames(X)){
     X <- subset(X, select = -Id)
   }
   # 数字开头 -> 加 X
   names(X) <- sub("^(\\d)", "X\\1", names(X))
   X <- convert_types(X)
   X <- impute_missing(X)
+  X <- standardize_continuous(X)
   return(X)
 }
 
